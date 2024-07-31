@@ -1,0 +1,115 @@
+I have a solution to one of last semester's problems in C. We need to reformat this solution as a multi-module C program (function main, pipeline component for pipeline, splitter component for selecting array parts between elements-dividers).
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
+
+int
+main(int argc, char *argv[])
+{
+    ++argv;
+    --argc;
+    int comm_start = 0, fd_next[2] = {0, 1}, fd_prev[2];
+    const char *divider = "--";
+    for (int i = 0; i <= argc; ++i)
+    {
+        if ((i == argc) || (strcmp(argv[i], divider) == 0))
+        {
+            argv[i] = NULL;
+            fd_prev[0] = fd_next[0];
+            fd_prev[1] = fd_next[1];
+            if (i != argc)
+            {
+                pipe(fd_next);
+            }
+            if (fork() == 0)
+            {
+                if (comm_start > 0)
+                {
+                    dup2(fd_prev[0], 0);
+                    close(fd_prev[0]);
+                    close(fd_prev[1]);
+                }
+                if (i != argc)
+                {
+                    dup2(fd_next[1], 1);
+                    close(fd_next[0]);
+                    close(fd_next[1]);
+                }
+                execvp(argv[comm_start], argv + comm_start);
+                return 0;
+            }
+            if ((comm_start > 0) || (i == argc))
+            {
+                close(fd_prev[0]);
+                close(fd_prev[1]);
+            }
+            comm_start = i + 1;
+        }
+    }
+
+    while(wait(NULL) != -1);
+
+    return 0;
+}
+
+There is a solution.c file 
+
+#include <stdio.h>
+#include "splitter.h"
+#include "pipeline.h"
+// splitter and pipeline are separate components!
+int
+main(int argc, const char *argv[])
+{
+    ++ argv;
+    -- argc;
+    set_array(argc, argv);
+    set_delimiter("--");
+    int begin, end;
+    while (next_block(&begin, &end) == 0) {
+        if (add_to_pipeline(&argv[begin], end - begin) != 0) {
+            fprintf(stderr, "Can't add to pipeline; abort\n");
+            free_pipeline();
+            free_splitter();
+            return 0;
+        }
+    }
+    run_pipeline();
+    free_pipeline();
+    free_splitter();
+    return 0;
+}
+
+and a pipeline.h file. 
+#ifndef __PIPELINE_H__
+#define __PIPELINE_H__
+
+/**
+ * Adds array[0], array[1], ..., array[size - 1] as
+ * a program arguments to the end of the sequence of programs arguments.
+ * Initially the sequence is empty.
+ * Terminating null argument is not passed here.
+ * Returns 0 if success, non 0 otherwise.
+ */
+int add_to_pipeline(const char *array[], int size);
+
+/**
+ * Runs the pipeline of the sequence of program arguments.
+ * Waits for ending all children processes.
+ * Returns 0 if success, non 0 otherwise.
+ */
+int run_pipeline(void);
+
+/**
+ * Frees any resources which is created by pipeline.
+ * Must be called after the completion of all operations.
+ */
+void free_pipeline(void);
+
+#endif
+
+Complete the missing files. Complete the Makefile according to ejudge rules.
+
+You can't change the given files (and replace them with your own). Splitter and pipeline components must be separate (they must not change the same variables together and do part of the work for the other component). Type conversions (and analogs) must not be used in source code, because it violates static typing.

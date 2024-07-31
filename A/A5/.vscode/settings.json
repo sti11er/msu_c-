@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "pipeline.h": "c",
+        "types.h": "c",
+        "wait.h": "c"
+    }
+}

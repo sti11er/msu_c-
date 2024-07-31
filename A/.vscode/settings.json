@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "numbers": "cpp",
+        "print_numbers.h": "c",
+        "shrink_numbers.h": "c"
+    }
+}
